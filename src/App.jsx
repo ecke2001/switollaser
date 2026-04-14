@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { processImageForLaser } from './utils/dithering'
 import { HfInference } from '@huggingface/inference'
+import { LaserController } from './utils/LaserController'
+import { gcodeGenerator } from './utils/GCodeGenerator'
 import './App.css'
 
 function App() {
@@ -23,6 +25,18 @@ function App() {
   const [processedImageUrl, setProcessedImageUrl] = useState(null)
   const [processInfo, setProcessInfo] = useState(null)
 
+  // Phase 4: Laser Status
+  const laserRef = useRef(new LaserController())
+  const [laserSpeed, setLaserSpeed] = useState(25000) // Atomstack Optimal: 20000-30000
+  const [laserPower, setLaserPower] = useState(800)  // 0-1000 GRBL Spindle PWM
+  const [isConnected, setIsConnected] = useState(false)
+  const [isEngraving, setIsEngraving] = useState(false)
+  const [engraveProgress, setEngraveProgress] = useState(0)
+  const [laserLogs, setLaserLogs] = useState([])
+  
+  // Um auf das originale Canvas Element aus Phase 3 zurückzugreifen!
+  const ditheredCanvasRef = useRef(null)
+
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -34,6 +48,20 @@ function App() {
         setIsSettingsOpen(true)
       }
     }
+
+    // Callbacks für Phase 4 registrieren
+    laserRef.current.setCallbacks({
+      onMessage: (msg) => setLaserLogs(prev => [...prev, msg].slice(-10)),
+      onProgress: (pct) => setEngraveProgress(pct),
+      onComplete: () => {
+        setIsEngraving(false)
+        setLaserLogs(prev => [...prev, "Gravur erfolgreich beendet!"].slice(-10))
+      },
+      onError: (err) => {
+        setError(`Laser-Fehler: ${err}`)
+        setIsEngraving(false)
+      }
+    });
   }, [envApiKey])
 
   const handleSaveSettings = (e) => {
@@ -78,7 +106,6 @@ function App() {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Setze das Bild sofort als Source (damit kann man es auch OHNE KI sofort lasern/dithern)
     const url = URL.createObjectURL(file);
     setSourceImageUrl(url);
     setProcessedImageUrl(null);
@@ -94,14 +121,10 @@ function App() {
     setError(null);
 
     try {
-      const hf = new HfInference(apiKey);
-      console.log('Starte Image-to-Image');
-      
-      // Umwandeln der URL in ein echtes Blob für die API
+      const hf = new HfInference(apiKey);      
       const imageResponse = await fetch(sourceImageUrl);
       const imageBlob = await imageResponse.blob();
 
-      // Das beste kostenlose Modell für textbasierte Bild-Veränderung bei HF
       const resultBlob = await hf.imageToImage({
         model: 'timbrooks/instruct-pix2pix',
         inputs: imageBlob,
@@ -111,7 +134,7 @@ function App() {
       setSourceImageUrl(URL.createObjectURL(resultBlob));
       setProcessedImageUrl(null);
     } catch (err) {
-      setError(`Img2Img Fehler: ${err.message}. (Hinweis: Kostenlose Img-2-Img Modelle sind manchmal wegen Overload nicht erreichbar)`);
+      setError(`Img2Img Fehler: ${err.message}. (Hinweis: Kostenlose Img-2-Img Modelle sind oft wegen Overload blockiert)`);
     } finally {
       setIsGenerating(false);
     }
@@ -126,7 +149,8 @@ function App() {
     try {
       const result = await processImageForLaser(sourceImageUrl, widthMm, 0.08);
       setProcessedImageUrl(result.processedUrl);
-      setProcessInfo(`Gerastert auf ${result.widthPx} x ${result.heightPx} Pixel (0.08mm)`);
+      setProcessInfo(`Gerastert: ${result.widthPx} x ${result.heightPx} Pixel (0.08mm)`);
+      ditheredCanvasRef.current = result.canvasId;
     } catch (err) {
       setError(err.message);
     } finally {
@@ -134,6 +158,50 @@ function App() {
     }
   }
 
+  // --- Phase 4: Laser Commands ---
+  const handleConnect = async () => {
+    setError(null);
+    try {
+      if (isConnected) {
+        await laserRef.current.disconnect();
+        setIsConnected(false);
+      } else {
+        await laserRef.current.connect();
+        setIsConnected(true);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const handleTestRun = async () => {
+    if (!isConnected || !ditheredCanvasRef.current) return;
+    // Test: Fährt das Muster ohne Laser Power (S0)
+    setIsEngraving(true);
+    setEngraveProgress(0);
+    const canvas = ditheredCanvasRef.current;
+    // Wir erzeugen den Generator
+    const iter = gcodeGenerator(canvas, widthMm, laserSpeed, 0); 
+    await laserRef.current.startEngraving(iter, canvas.height);
+  }
+
+  const handleStartEngraving = async () => {
+    if (!isConnected || !ditheredCanvasRef.current) return;
+    // Live Run (Laser an)
+    setIsEngraving(true);
+    setEngraveProgress(0);
+    const canvas = ditheredCanvasRef.current;
+    
+    const iter = gcodeGenerator(canvas, widthMm, laserSpeed, laserPower); 
+    await laserRef.current.startEngraving(iter, canvas.height); // Total commands = ungefähr canvas.height (da Iterator zeilenweise spuckt)
+  }
+
+  const handleEmergencyStop = () => {
+    laserRef.current.stop();
+    setIsEngraving(false);
+  }
+
+  // --- RENDER ---
   return (
     <div className="app-container">
       <header className="glass-panel header">
@@ -194,7 +262,7 @@ function App() {
           {activeTab === 'img2img' && (
             <div className="prompt-section">
               <h2>Lade ein eigenes Bild hoch</h2>
-              <p className="tab-desc">Du kannst das hochgeladene Bild sofort rastern (rechts unten) ODER es per Extra-Befehl von der KI für die Gravur umschreiben lassen!</p>
+              <p className="tab-desc">Du kannst das hochgeladene Bild sofort rastern ODER es per Befehl von der KI für die Gravur umschreiben lassen!</p>
               
               <div className="upload-area" onClick={() => fileInputRef.current.click()}>
                  <input 
@@ -212,7 +280,7 @@ function App() {
                 <div className="input-group mt-2">
                   <input 
                     type="text" 
-                    placeholder="Optionaler KI-Befehl: Z.B. 'Verwandle es in eine simple Bleistiftskizze'"
+                    placeholder="Optionaler Befehl: Z.B. 'Verwandle es in eine Vektorskizze'"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     disabled={isGenerating}
@@ -274,13 +342,14 @@ function App() {
                     min="10" 
                     max="500" 
                     className="size-input"
+                    disabled={isProcessing || isEngraving}
                   />
                 </div>
                 
                 <button 
                   className="primary full-width" 
                   onClick={handleDithering}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isEngraving}
                 >
                   {isProcessing ? 'Rastert...' : '⚙️ Für Laser Rastern (Dithering)'}
                 </button>
@@ -295,6 +364,70 @@ function App() {
             )}
             
           </div>
+
+          {/* --- PHASE 4: LASER CONTROL PANEL --- */}
+          {processedImageUrl && (
+            <div className="laser-control-panel fade-in">
+              <div className="separator"></div>
+              <h2>Laser Control Center</h2>
+              
+              <div className="laser-grid">
+                
+                <div className="laser-settings glass-panel">
+                  <h3>Hardware Parametrierung</h3>
+                  <div className="form-group">
+                    <label>Geschwindigkeit (Feedrate F, mm/min):</label>
+                    <input type="number" value={laserSpeed} onChange={(e)=>setLaserSpeed(parseFloat(e.target.value) || 1000)} disabled={isEngraving} />
+                    <small>Empfehlung E18 Pro: 20.000 bis 36.000 (Zick-Zack Highspeed)</small>
+                  </div>
+                  <div className="form-group">
+                    <label>Laser Stärke (Spindle S, 0-1000):</label>
+                    <input type="number" value={laserPower} onChange={(e)=>setLaserPower(parseFloat(e.target.value) || 0)} disabled={isEngraving} />
+                    <small>Je nach Holz z.B. 600 - 800 für kräftiges Schwarz.</small>
+                  </div>
+                  
+                  <div className="actions mt-2">
+                    <button className={isConnected ? "danger full-width" : "primary full-width"} onClick={handleConnect} disabled={isEngraving}>
+                      {isConnected ? "🔌 USB Trennen" : "🔌 Verbinde Laser via Web Serial"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="laser-execution glass-panel">
+                  <h3>Steuerung & Terminal</h3>
+                  
+                  <div className="control-buttons">
+                    <button className="primary" onClick={handleTestRun} disabled={!isConnected || isEngraving}>
+                      🔰 Trockenlauf (Test mit Laser aus, S0)
+                    </button>
+                    <button className="danger" onClick={handleStartEngraving} disabled={!isConnected || isEngraving}>
+                      🔥 LASER STARTEN (Ernstfall)
+                    </button>
+                    {isEngraving && (
+                      <button className="danger blink" onClick={handleEmergencyStop}>
+                        🛑 NOTSTOPP
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="progress-container mt-2">
+                     <div className="progress-bar-bg">
+                        <div className="progress-bar-fill" style={{ width: `${engraveProgress}%` }}></div>
+                     </div>
+                     <p className="progress-text">{engraveProgress}% Sendevorgang abgeschlossen</p>
+                  </div>
+
+                  <div className="terminal mt-2">
+                     {laserLogs.map((log, i) => (
+                       <pre key={i}>{log}</pre>
+                     ))}
+                     <pre className="blink cursor">_</pre>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </main>
 
