@@ -1,27 +1,36 @@
-# Projektplan: Swiitol Laser KI-App (Vereinfachte Architektur)
+# Projektplan: Swiitol Laser KI-App
 
 Dieser Plan unterteilt das Projekt in überschaubare Phasen. Jeden Schritt haken wir nacheinander ab.
 
 ## Phase 1: Projekt-Setup und Basis-Restrukturierung
-- [ ] Initialisierung der Vite/React App (ohne redundantes Backend).
-- [ ] Erstellung eines "Premium-UI" Grundgerüsts (Vanilla CSS, Dark Mode).
-- [ ] Implementierung eines lokalen Settings-Bereichs (Eingabe und sicheres lokales Speichern des OpenAI/Replicate API Keys).
-- [ ] *ABNAHME: Du prüfst die App lokal in deinem Browser (Chrome/Edge empfohlen).*
+- [x] Initialisierung der Vite/React App (Single Page Application Architektur).
+- [x] Erstellung eines "Premium-UI" Grundgerüsts (Vanilla CSS, Dark Mode, Glassmorphism).
+- [x] Implementierung eines Settings-Bereichs (Eingabe und sicheres lokales Speichern / .env für API-Keys).
+- [x] *ABNAHME: Erfolgreich lokal und in der Cloud (Hugging Face Spaces) deployed.*
 
 ## Phase 2: KI-Bildgenerierung über den Client
-- [ ] Direkte Client-Integration der KI-API (z.B. OpenAI) über Fetch aus dem React-Frontend.
-- [ ] UI für Bildeingabe (Prompt), Ladeanimationen, Fehlerbehandlung und Anzeige des Ergebnisses.
-- [ ] *ABNAHME: Generieren und Darstellen von Bildern über deinen lokalen Browser.*
+- [x] Direkte Client-Integration und Fetch-Request an die kostenlose Hugging Face Inference API.
+- [x] Integration des State-of-the-Art FLUX.1 (schnell) Bildmodells.
+- [x] UI für Bildeingabe (Prompt), Ladeanimationen, Fehlerbehandlung und Resultat.
+- [x] *ABNAHME: Generieren und Darstellen von Laser-Vorlagen-Bildern im Browser.*
 
-## Phase 3: Bildvorbereitung & Dithering via Canvas
-- [ ] HTML5 Canvas Pipeline aufsetzen.
-- [ ] Funktion: Bild in reines Graustufen-Format umwandeln (Luminanz-Matching).
-- [ ] Funktion: Implementierung des Floyd-Steinberg-Algorithmus in JavaScript (Umwandlung in reine Schwarz-Weiß-Pixel für den Laser).
-- [ ] UI für die Vorher/Nachher-Vorschau.
-- [ ] *ABNAHME: Visuelle Überprüfung der bearbeiteten Bilder.*
+## Phase 2.5: Eigener Bild-Upload & Image-to-Image (Neu hinzugefügt)
+- [x] Ausbau der UI um ein Tab-System (Generator vs. Upload).
+- [x] Drag & Drop Feld für das Einfügen lokaler Nutzerbilder.
+- [x] Implementierung des `@huggingface/inference` SDK für Bildmanipulation.
+- [x] KI-Veredelung per `image-to-image` (InstructPix2Pix Modell) für eigene Fotos.
+- [x] *ABNAHME: Eigene Bilder können unverändert gerastert ODER per KI zum Raster modifiziert werden.*
 
-## Phase 4: G-Code Generierung & Web Serial Laser-Verbindung
+## Phase 3: Bildvorbereitung & Dithering (Atomstack E18 Pro)
+- [x] UI Eingabe für Wunsch-Lasergravurbreite in mm.
+- [x] Berechnung der korrekten Laserpunktanzahl (Faktor für 0.08mm Laserspot).
+- [x] HTML5 Canvas Bild-Skalierung (Upscaling) & Graustufen-Konvertierung (Luminanz-Methode).
+- [x] Implementierung des Floyd-Steinberg-Dithering in Native JS (Verlustfreie S/W Laser-Vorstufe).
+- [x] *ABNAHME: Vorher/Nachher Ansicht inklusiv Browser 'pixelated' Image-Rendering zur Prüfung.*
+
+## Phase 4: G-Code Generierung & Web Serial Laser-Verbindung (Ausstehend)
 - [ ] Übersetzungs-Algorithmus: Liest die schwarzen/weißen Pixel des Canvas aus und baut den GRBL G-Code zusammen.
-- [ ] Anbindung der "Web Serial API", so dass der Browser den Swiitol Laser per USB koppelt.
-- [ ] Stream-Kontrolle: Start, Abbruch und Live-Fortschrittsbalken im UI während des Sendevorgangs.
+- [ ] Anbindung der "Web Serial API", damit Chrome den Atomstack Laser direkt per USB verbindet.
+- [ ] Stream-Kontrolle: 128-Byte Command-Puffer (GRBL Spec) für schnelles Gravieren (36.000 mm/min) integrieren.
+- [ ] UI zur Live-Steuerung: Start, Abbruch und Live-Fortschrittsbalken während des Sendevorgangs.
 - [ ] *ABNAHME: Trockenlauf am Laser und anschließender erster Laserschnitt.*
