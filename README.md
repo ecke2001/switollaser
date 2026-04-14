@@ -1,16 +1,23 @@
-# React + Vite
+---
+title: Swiitol Laser AI
+emoji: ⚡
+colorFrom: purple
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Swiitol Laser AI
 
-Currently, two official plugins are available:
+Eine hochperformante React Single-Page Application zur automatisierten Bild-Generierung, -Aufbereitung und -Verpixelung (Dithering) zur Vorbereitung für den Atomstack/Swiitol E18 Pro Lasergravierer.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Features
+* **Text-to-Image**: Generiert Laser-optimierte Motive direkt aus Text (nutzt Hugging Face FLUX.1).
+* **Img2Img**: Hochladen von privaten Fotos und optionale KI-Veredelung (InstructPix2Pix).
+* **Canvas Upscaling**: Pixelgenaue Vergrößerung / Interpolation basierend auf der 0.08mm Punktgröße des Lasers.
+* **Floyd-Steinberg Dithering**: Millisekundenschnelles, verlustfreies 1-Bit Dithering im Browser RAM, um aus jedem Foto reine Schwarz-Weiß G-Code Laser-Punkte zu generieren.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Bereitstellung (Hugging Face Spaces)
+Dieses Repository ist nativ konfiguriert, um als **Hugging Face Docker Space** gehostet zu werden.
+Der inkludierte `Dockerfile` baut die Vite App in ein Produktions-Bundle und served sie blitzschnell auf Port 7860.
