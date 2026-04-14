@@ -6,12 +6,15 @@ Nach erneuter architektonischer Prüfung wurde das Setup massiv vereinfacht, um 
 *   **App-Typ**: Single Page Application (SPA), die lokal im Browser läuft. Komplett Offline-fähig (bis auf die KI-Abfrage natürlich).
 *   **Frontend-Framework**: Vite + React (schnell, modern, einfach).
 *   **Styling**: Vanilla CSS (für "Glassmorphismus", fließende Micro-Animationen, Premium-Dark-Mode).
-*   **Hardware-Kommunikation**: **Web Serial API**. Native Kommunikation direkt aus dem Browser mit dem Laser (der Swiitol verwendet meist GRBL) via USB. 
-*   **KI-Bildgenerierung**: 
-    *   Direkte API-Calls an OpenAI (DALL-E 3). Der User gibt seinen API-Key einmalig im Frontend (z.B. in den Einstellungen) ein. Dieser wird sicher lokal in deinem Browser (`localStorage`) gespeichert. Es gibt keinen Fremdserver, zu dem der Schlüssel geschickt wird.
+*   **Hardware-Kommunikation**: **Web Serial API**. Native Kommunikation direkt aus dem Browser mit dem Laser (der Swiitol verwendet meist GRBL) via USB, inkl. 128-Byte Character Counting Buffer für 36.000 mm/min Highspeed. 
+*   **KI-Bildgenerierung & Bearbeitung**: 
+    *   Direkte API-Calls an **Hugging Face** Inference API.
+    *   Modelle: `FLUX.1-schnell` (Text-to-Image) und `instruct-pix2pix` (Image-to-Image / Bildbearbeitung).
+    *   Sichere "Bring-Your-Own-Key" Architektur via `.env` (lokal) oder `localStorage` (Public HF Space).
 *   **Bildverarbeitung für die Gravur**: 
     *   Komplette Bildverarbeitung im **HTML5 Canvas**.
-    *   Nativer JavaScript-Algorithmus zur Umwandlung ins Graustufenbild und rastern mit **Floyd-Steinberg-Dithering** (ideal für präzise Lasergravuren). Keine Serverechnungen nötig!
+    *   Nativer JavaScript-Algorithmus zur Umwandlung ins Graustufenbild und Rastern mit **Floyd-Steinberg-Dithering** (ideal für präzise 1-Bit Lasergravuren). Keine Serverechnungen nötig!
+*   **Hosting**: Automatisches Docker Deployment in Hugging Face Spaces (Port 7860).
 
 ## 2. Programmier-Richtlinien (Guidelines)
 *   **KISS-Prinzip (Keep It Simple, Stupid)**: Keine unnötige Komplexität. Keine zweite Codebase. Alles passiert client-side im Browser.

@@ -35,11 +35,11 @@ Dieser Plan unterteilt das Projekt in überschaubare Phasen. Jeden Schritt haken
 - [x] UI zur Live-Steuerung: Start, Abbruch und Live-Fortschrittsbalken während des Sendevorgangs.
 - [x] *ABNAHME: Trockenlauf am Laser und anschließender erster Laserschnitt getestet.*
 
-## Phase 5: Erweiterte Maschinensteuerung & Feintuning (Geplant)
-- [ ] **Framing (Umrandungsfahrt)**: Laser fährt das exakte Rechteck/die Außenmaße des Bildes mit `S0` ab, um das Werkstück am Tisch perfekt ausrichten zu können.
-- [ ] **Positions- & Zero-Management**: Buttons für "Set Zero" (`G92 X0 Y0`) und "Go to Zero" (`G0 X0 Y0`), um den Startpunkt der Arbeit festzulegen.
-- [ ] **Echtzeit-Maschinenstatus (GRBL Polling)**: Permanentes Abfragen (`?`) der exakten X/Y Hardware-Koordinaten und Status-Anzeigen (Idle, Run, Alarm) im UI.
-- [ ] **Luftunterstützung (Air Assist)**: Integration eines Schalters für kompatible Air Assist Module (`M8` für An, `M9` für Aus).
-- [ ] **Mehrfach-Durchgänge**: Konfiguration für "Anzahl Pässe" (z.B. 3x nacheinander scannen), um tiefe Gravuren ohne Code-Neugenerierung automatisiert abzuschließen.
-- [ ] **Homing / Unlock**: Button für Maschinen-Nullstellen-Fahrt (`$H`) und Alarm-Unlock (`$X`).
-- [ ] *ABNAHME: Alle Hardware-Erweiterungen funktionieren synchron mit der Web Serial Verbindung.*
+## Phase 5: Erweiterte Maschinensteuerung & Feintuning
+- [x] **Framing (Umrandungsfahrt)**: Laser fährt das exakte Rechteck/die Außenmaße des Bildes mit `S0` ab, um das Werkstück am Tisch perfekt ausrichten zu können.
+- [x] **Positions- & Zero-Management**: Buttons für "Set Zero" (`G92 X0 Y0`) und "Go to Zero" (`G0 X0 Y0`), um den Startpunkt der Arbeit festzulegen.
+- [x] **Echtzeit-Maschinenstatus (GRBL Polling)**: Permanentes Abfragen (`?`) der exakten X/Y Hardware-Koordinaten und Status-Anzeigen (Idle, Run, Alarm) im UI.
+- [x] **Luftunterstützung (Air Assist)**: Integration eines Schalters für kompatible Air Assist Module (`M8` für An, `M9` für Aus).
+- [x] **Mehrfach-Durchgänge**: Konfiguration für "Anzahl Pässe" (z.B. 3x nacheinander scannen), um tiefe Gravuren ohne Code-Neugenerierung automatisiert abzuschließen.
+- [x] **Homing / Unlock**: Button für Maschinen-Nullstellen-Fahrt (`$H`) und Alarm-Unlock (`$X`).
+- [x] *ABNAHME: Alle Hardware-Erweiterungen funktionieren synchron mit der Web Serial Verbindung.*
