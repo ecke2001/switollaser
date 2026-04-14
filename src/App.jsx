@@ -29,6 +29,8 @@ function App() {
   const laserRef = useRef(new LaserController())
   const [laserSpeed, setLaserSpeed] = useState(25000) // Atomstack Optimal: 20000-30000
   const [laserPower, setLaserPower] = useState(800)  // 0-1000 GRBL Spindle PWM
+  const [passes, setPasses] = useState(1) // Phase 5: Multi-Pass
+  const [airAssist, setAirAssist] = useState(false) // Phase 5: Air Assist
   const [isConnected, setIsConnected] = useState(false)
   const [isEngraving, setIsEngraving] = useState(false)
   const [engraveProgress, setEngraveProgress] = useState(0)
@@ -192,9 +194,45 @@ function App() {
     setEngraveProgress(0);
     const canvas = ditheredCanvasRef.current;
     
-    const iter = gcodeGenerator(canvas, widthMm, laserSpeed, laserPower); 
-    await laserRef.current.startEngraving(iter, canvas.height); // Total commands = ungefähr canvas.height (da Iterator zeilenweise spuckt)
+    // Phase 5: Air Assist steuern
+    if (airAssist) await laserRef.current.sendImmediate("M8");
+
+    // Phase 5: Multi-Pass Logik
+    for (let p = 1; p <= passes; p++) {
+        if (!laserRef.current.isStreaming && p > 1) break; // Notstopp catch
+        laserRef.current.callbacks.onMessage(`Starte Durchgang ${p} von ${passes}...`);
+        
+        const iter = gcodeGenerator(canvas, widthMm, laserSpeed, laserPower); 
+        await laserRef.current.startEngraving(iter, canvas.height);
+    }
+    
+    if (airAssist) await laserRef.current.sendImmediate("M9");
+    setIsEngraving(false);
   }
+
+  // --- Phase 5: Advanced Controls ---
+  const handleFraming = async () => {
+    if (!isConnected || !ditheredCanvasRef.current) return;
+    const canvas = ditheredCanvasRef.current;
+    const heightMm = (canvas.height * (widthMm / canvas.width)).toFixed(3);
+    const w = widthMm.toFixed(3);
+    const feed = 3000;
+    
+    await laserRef.current.sendImmediate("G21");
+    // Laser für Ausrichtung schwach aufwecken (S1 = winziger blauer Punkt, brennt nicht!)
+    await laserRef.current.sendImmediate("M3 S1"); 
+    await laserRef.current.sendImmediate(`G1 X${w} Y0 F${feed}`);
+    await laserRef.current.sendImmediate(`G1 X${w} Y${heightMm} F${feed}`);
+    await laserRef.current.sendImmediate(`G1 X0 Y${heightMm} F${feed}`);
+    await laserRef.current.sendImmediate(`G1 X0 Y0 F${feed}`);
+    await laserRef.current.sendImmediate("M5"); // Sicher abschalten
+  }
+
+  const handleSetZero = () => laserRef.current.sendImmediate("G92 X0 Y0");
+  const handleGoZero = () => laserRef.current.sendImmediate("G0 X0 Y0 F3000");
+  const handleHoming = () => laserRef.current.sendImmediate("$H");
+  const handleUnlock = () => laserRef.current.sendImmediate("$X");
+
 
   const handleEmergencyStop = () => {
     laserRef.current.stop();
@@ -385,6 +423,14 @@ function App() {
                     <input type="number" value={laserPower} onChange={(e)=>setLaserPower(parseFloat(e.target.value) || 0)} disabled={isEngraving} />
                     <small>Je nach Holz z.B. 600 - 800 für kräftiges Schwarz.</small>
                   </div>
+                  <div className="form-group inline-form" style={{marginBottom: 0}}>
+                    <label>Durchgänge (Multi-Pass):</label>
+                    <input type="number" value={passes} onChange={(e)=>setPasses(parseInt(e.target.value) || 1)} min="1" max="10" className="size-input" disabled={isEngraving} />
+                  </div>
+                  <div className="form-group inline-form mt-2">
+                    <label>Air Assist Pumpe (Luft):</label>
+                    <input type="checkbox" checked={airAssist} onChange={(e)=>setAirAssist(e.target.checked)} disabled={isEngraving} />
+                  </div>
                   
                   <div className="actions mt-2">
                     <button className={isConnected ? "danger full-width" : "primary full-width"} onClick={handleConnect} disabled={isEngraving}>
@@ -397,6 +443,17 @@ function App() {
                   <h3>Steuerung & Terminal</h3>
                   
                   <div className="control-buttons">
+                    <div style={{display: 'flex', gap: '0.5rem', marginBottom: '1rem'}}>
+                       <button onClick={handleSetZero} disabled={!isConnected || isEngraving} title="Setzt aktuelle Position als X0 Y0">📍 Set Zero</button>
+                       <button onClick={handleGoZero} disabled={!isConnected || isEngraving} title="Fährt zu X0 Y0">🏠 Go to Zero</button>
+                       <button onClick={handleHoming} disabled={!isConnected || isEngraving} title="Hardware Homing via Endschalter">🔄 Homing ($H)</button>
+                       <button onClick={handleUnlock} disabled={!isConnected || isEngraving} title="Entsperrt GRBL nach Fehlern">🔓 Unlock ($X)</button>
+                    </div>
+
+                    <button className="settings-btn" onClick={handleFraming} disabled={!isConnected || isEngraving} style={{marginBottom: '0.5rem'}}>
+                      📐 Framing (Außenrand abfahren zur Holzausrichtung)
+                    </button>
+                    
                     <button className="primary" onClick={handleTestRun} disabled={!isConnected || isEngraving}>
                       🔰 Trockenlauf (Test mit Laser aus, S0)
                     </button>

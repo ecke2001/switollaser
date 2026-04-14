@@ -168,8 +168,20 @@ export class LaserController {
     this.callbacks.onComplete();
   }
 
+  // Sende ein einzelnes, sofortiges Kommando an das Gerät (z.B. Set Zero, Homing)
+  async sendImmediate(cmd) {
+    if (!this.connected) throw new Error("Nicht verbunden!");
+    this.callbacks.onMessage("> " + cmd);
+    await this._sendRaw(cmd + "\n");
+  }
+
   // Notstopp
   stop() {
     this.isStreaming = false;
+    this.sendImmediate("!");      // GRBL Feed Hold
+    setTimeout(() => {
+      this.sendImmediate("M5");   // Laser Out
+      this.sendImmediate("G0 X0 Y0"); // Go Home
+    }, 100);
   }
 }
